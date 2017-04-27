@@ -180,9 +180,10 @@ Library.
 
 
 # Library imports
-import unicodedata
+
 from pkg_resources import WorkingSet, DistributionNotFound
 from PIL import Image, ImageDraw
+from PIL import ImageFont
 
 ##############################################################################
 # Function:     check_if_module_installed
@@ -209,32 +210,249 @@ def check_if_module_installed(debug_msg, module_name, module_version):
         install([module_name])
 
 ################################################################################################
-# Function:     create_image
-# Description:  Create an image with specified height, width, background color
-#               and Transperancy
-# Parameters:   height: An Integar to define hight of the image
-#               width:  An Integar to define width of the image
-#               bg_color: A tuple containing rgba color code for image background
+# Function:     draw_marker
+# Description:  draws marker over specified x and y axis
+#
+# Parameters:   img             :   An object of image
+#               marker_color    :   A String containing RGB hexadecimal value for defining
+#                                   marker color
+#               coordinates     :   A tuple containing x and y corodinate to place the marker
+# Return type:  none
+################################################################################################
+def draw_marker (img, marker_color, coordinates):
+    img_width, img_height = img.size
+    x_pos, y_pos = coordinates
+    draw = ImageDraw.Draw(img)
+    # draw marker
+    draw.line([(x_pos, offset_y), (x_pos, img_height - offset_y)], width = 1, fill = marker_color)
+    img.show()
+
+
+################################################################################################
+# Function:     draw_axis
+# Description:  draws X and Y axis
+#
+# Parameters:   img             :   An object of image
+#               border_color    :   A String containing RGB hexadecimal value for defining
+#                                   border color
+#               offset          :   border offset in pixels
+# Return type:  none
+################################################################################################
+def draw_axis(img, border_color, offset):
+    img_width,img_height = img.size
+    draw = ImageDraw.Draw(img)
+    # draw x axis
+    draw.line([(offset, 0),(offset, img_height-offset)], width= 3, fill=border_color)
+    # draw y axis
+    draw.line([(offset, img_height-offset),(img_width, img_height-offset)], width= 3, fill=border_color)
+    img.show()
+    
+################################################################################################
+# Function:     draw_clk
+# Description:  draws clock signal of desired length.
+#
+# Parameters:   img             :   An object of image
+#               signal_color    :   A String containing RGB hexadecimal value for defining
+#                                   signal color
+#               start_position  :   A tuple containing (x,y) coordinates of start position
+#               end_position    :   A tuple containing (x,y) coordinates of end position
+#               clk_pulse1_width:   An integer for defining clk_pulse1_width in pixels. default value is 50px
+#               clk_pulse0_width:   An integer for defining clk_pulse0_width in pixels. default value is 50px
+#               clk_pulse_height:   An integer for defining clk_pulse_height in pixels. default value is 20px
+#                                        _________________                  _________________
+#                                       |                 |                |                 |
+#                       ________________|                 |________________|                 |_______
+#                                       <-clkPulse1Width-><-clkPulse0Width->
+# Return type:  none
+################################################################################################
+def draw_clk( img, start_position, end_position, signal_color, clk_pulse1_width = 50, clk_pulse0_width = 50, clk_pulse_height=20):
+    # get start and finish x and y coordinates
+    start_x_pos, start_y_pos = start_position
+    end_x_pos, end_y_pos = end_position
+    # Calculate the clock cycle width in pixels
+    clk_cycle_width = clk_pulse1_width + clk_pulse0_width
+    # Calculate the total number of clock cycles
+    clock_cycle_number = int((end_x_pos - start_x_pos) / clk_cycle_width)
+    print("clock_cycle_number: "+ str(clock_cycle_number))
+    # Open the image object in ImageDraw
+    draw = ImageDraw.Draw(img)
+    clk_cycle_counter = 0
+    # draw the clock signal at the specified coordinate
+    cur_x_pos = start_x_pos
+    cur_y_pos = start_y_pos
+
+    #
+    #                  (x1,y2)           (x2,y2)
+    #                    _________________
+    #                   |                 |
+    #   ________________|                 |
+    #  (x0,y0)         (x1,y1)          (x2, y1)
+    while clk_cycle_counter <= clock_cycle_number:
+        # collect the first negedge point
+        clk_negedge_time_points.append((cur_x_pos, cur_y_pos))
+        # Draw the 0 clk line i.e. (x0,y0) to (x1,y1)
+        draw.line([(cur_x_pos, cur_y_pos), (cur_x_pos + clk_pulse0_width, cur_y_pos)], width= 2, fill= signal_color)
+        # Update the current x position
+        cur_x_pos = cur_x_pos + clk_pulse0_width
+        # collect the first posedge point
+        clk_posedge_time_points.append((cur_x_pos, cur_y_pos))
+        # Draw the vertical up line (y position is in upward direction so (-) sign is used) i.e. (x1,y1) to (x1,y2)
+        draw.line([(cur_x_pos, cur_y_pos), (cur_x_pos, cur_y_pos - clk_pulse_height)], width= 2, fill= signal_color)
+        # Update the current y position
+        cur_y_pos = cur_y_pos - clk_pulse_height
+        # Draw the horizontal 1 clk line i.e. (x1,y2) to (x2,y2)
+        draw.line([(cur_x_pos, cur_y_pos), (cur_x_pos + clk_pulse1_width, cur_y_pos)], width = 2, fill = signal_color)
+        # Update the current x position
+        cur_x_pos = cur_x_pos + clk_pulse1_width
+        # collect the second negedge point
+        clk_negedge_time_points.append((cur_x_pos,cur_y_pos))
+        # Draw the vertical down line i.e. (x2,y2) to (x2,y1)
+        draw.line([(cur_x_pos, cur_y_pos), (cur_x_pos, cur_y_pos + clk_pulse_height)], width = 2, fill = signal_color)
+        # Update the current y position
+        cur_y_pos = cur_y_pos + clk_pulse_height
+        clk_cycle_counter = clk_cycle_counter + 1
+    img.show()
+
+
+################################################################################################
+# Function:     draw_pulse
+# Description:  draws pulse signal of desired length.
+#
+# Parameters:   img             :   An object of image
+#               signal_color    :   A String containing RGB hexadecimal value for defining
+#                                   signal color
+#               signal_position :   A tuple containing (x,y) coordinates of start position
+#               end_position    :   A tuple containing (x,y) coordinates of end position
+#               transition_value:   A string defines 1 to 1 logic 
+#               clk_pulse1_width:   An integer for defining clk_pulse1_width in pixels. default value is 50px
+#               clk_pulse0_width:   An integer for defining clk_pulse0_width in pixels. default value is 50px
+#               clk_pulse_height:   An integer for defining clk_pulse_height in pixels. default value is 20px
+#
+#                                        _________________                  _________________
+#                                       |                 |                |                 |
+#                       ________________|                 |________________|                 |_______
+#
+#
+#                                        _________________
+#                                       |                 |
+#                       ________________|                 |___________________________________________
+# Return type:  none
+################################################################################################
+
+    
+################################################################################################
+# Function:     write_text
+# Description:  Selects font type and font-size and write texts in the images
+#
+# Parameters:   img             :   An object of image
+#               font_name       :   A String for selecting available fonts
+#               font_size       :   An Integer for setting the font size
+#               font_color      :   A tuple to Define the font color in RGB code i.e. white = (255,255,255)
+#               wr_text         :   A String to define the text to be written
+#               text_position   :   A tuple (x,y) to define the starting position of the text
+# Return type:  none
+################################################################################################
+def write_text(img, font_name, font_size, font_color, wr_text, text_position):
+    # select the font type and size
+    font = ImageFont.truetype(font_name, font_size)
+    # open the image in edit mode
+    draw = ImageDraw.Draw(img)
+    # add the text to the specified position in the image
+    draw.text(text_position, wr_text, font_color, font=font)
+    img.show()
+
+
+################################################################################################
+# Function:     create_new_image
+# Description:  Create a new image with specified height, width, background color
+#               and Transparency
+# Parameters:   height  : An Integer to define height of the image
+#               width   : An Integer to define width of the image
+#               bg_color: A tuple containing "RGBA" color code for image background
 #                         and transparency i.e. red = (255, 0, 0, 0), yellow = (255,255,0,0)
 # Return type:  image object
 ################################################################################################
-def create_image(height, width, bg_color):
+def create_new_image(height, width, bg_color):
     img = Image.new('RGBA',(height,width), bg_color)
     assert isinstance(img, object)
     return img
 
+################################################################################################
+# Function:     create_grid
+# Description:  Create a grid on a image
+# Parameters:   img: An image object
+#               height: An Integar to define hight of the image
+#               width:  An Integar to define width of the image
+#               grid_color: A String contains rgb color for defining grid color
+#               grid_spacing: An Integer to define the spacing of the grid_boxes
+# Return type:  none
+################################################################################################
+def create_grid(img, height, width, grid_color, grid_spacing):
+    # Open the image object in ImageDraw
+    draw = ImageDraw.Draw(img)
+    x = 0   # Starting point on X Axis
+    y = 0   # Starting point on Y Axis
+    #Draw the row and column lines
+    while y <= height and x <= width:
+        #Draw the line in Y axis
+        draw.line([(x, 0),(x, height)], fill=grid_color)
+        #Draw line in X axis
+        draw.line([(0,y),(width,y)], fill=grid_color)
+        x = x+grid_spacing
+        y = y+grid_spacing
+    img.show()
 
 
+################################################################################################
+# Function:     save_image
+# Description:  Saves the image at specified location (default location is the directory where
+#               the script is located) and in specified format (default is png)
+#
+# Parameters:   img :           image object to save
+#               path:           Specified absolute path to save image
+#               save_file_name: An String specifying the save file name and format of the image
+#               (i.e. new_image.png, new_image.jpeg etc)
+#
+# Return type:  None
+################################################################################################
+def save_image(img, path, save_file_name):
+    save_path = path + '\\' + save_file_name
+    img.save(save_path)
 
 ###########################################################################
 # Function:     main
 # Description:  Start point of Program
 ###########################################################################
-def main():
+def main () :
     # Check if Pillow is present
     check_if_module_installed(True, 'Pillow', '4.1.0')
 
+    # Create new image
+    image = create_new_image(1024,1024,(255,255,0,0))
+    # Draw grid line
+    # create_grid( image, 1024, 1024, "#FF0000", 100 )
+
+    # Draw border across signals
+    draw_axis(image, '#FF00FF', offset_x)
+    # add a level
+    
+    # Draw clock
+    draw_clk(image, (200, 200), (800, 200), "#FFFFFF")
+    
+    # Draw markers along posedge of clk
+    for i in clk_posedge_time_points:
+        draw_marker(image, "#FF000F", i)
+    # Draw markers along negedge of clk
+    for i in clk_negedge_time_points:
+        draw_marker(image,"#FF00F0", i)
+    # Save image
+    save_image(image, "C:\\Users\Farshad\Documents", "MyImage.png")
 
 
 #******************* Instantiation of main() method **************************#
+# global variables
+offset_x = 100
+offset_y = 100
+clk_negedge_time_points = []  # collects the (x,y) coordinates of clk negedges
+clk_posedge_time_points = []  # collects the (x,y) coordinates of clk posedges
 if __name__=="__main__": main()
