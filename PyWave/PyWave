@@ -323,7 +323,7 @@ def draw_clk( img, start_position, end_position, signal_color, clk_pulse1_width 
 #                                   signal color
 #               signal_position :   A tuple containing (x,y) coordinates of start position
 #               end_position    :   A tuple containing (x,y) coordinates of end position
-#               transition_value:   A string defines 1 to 1 logic 
+#               transition_value:   A string defines 1 to 1 logic
 #               clk_pulse1_width:   An integer for defining clk_pulse1_width in pixels. default value is 50px
 #               clk_pulse0_width:   An integer for defining clk_pulse0_width in pixels. default value is 50px
 #               clk_pulse_height:   An integer for defining clk_pulse_height in pixels. default value is 20px
