@@ -143,30 +143,61 @@ def draw_clk( img, start_position, end_position, signal_color, clk_pulse1_width 
 
 
 ################################################################################################
-# Function:     draw_pulse
-# Description:  draws pulse signal of desired length.
+# Function:     draw_signal_pulse
+# Description:  draws pulse signal of desired length to represent desired logic value (i.e. '1', '0', 'x' and 'z')
 #
-# Parameters:   img             :   An object of image
-#               signal_color    :   A String containing RGB hexadecimal value for defining
-#                                   signal color
-#               signal_position :   A tuple containing (x,y) coordinates of start position
-#               end_position    :   A tuple containing (x,y) coordinates of end position
-#               transition_value:   A string defines 1 to 1 logic
-#               clk_pulse1_width:   An integer for defining clk_pulse1_width in pixels. default value is 50px
-#               clk_pulse0_width:   An integer for defining clk_pulse0_width in pixels. default value is 50px
-#               clk_pulse_height:   An integer for defining clk_pulse_height in pixels. default value is 20px
+# Parameters:   img                 :   An object of image
+#               logic_value         :   A String containing logic value of the signal pulse i.e. ('1', '0', 'x' and 'z')
+#               start_coordinates   :   A tuple containing (x,y) coordinates of start position
+#               end_coordinates     :   A tuple containing (x,y) coordinates of end position
+#               signal_height       :   An integer defining height of the logic pulse in pixels. default is 50px 
+#               raising_slop        :   An integer for defining rising slop width in pixels. default value is 0px
+#               falling_slop        :   An integer for defining falling slop width in pixels. default value is 0px
+#               double_skew         :   An boolean value for enabling drawing double slop lines on raising and falling edges. 
+#                                       default is 'True'
+#               logic_color         :   An String for defining a particular logic color in RGB hexstring
+#               line_width          :   An integer for defining signal line width in pixels. default value is 1px  
 #
 #                                        _________________                  _________________
 #                                       |                 |                |                 |
 #                       ________________|                 |________________|                 |_______
 #
 #
-#                                        _________________
-#                                       |                 |
-#                       ________________|                 |___________________________________________
+#                                        _________________                  __________________   'z'
+#                                       |                 |        '0'              'x'       ________
+#                       ________________|     '1'         |___________________________________
 # Return type:  none
 ################################################################################################
+def draw_signal_pulse(img, logic_value, start_coordinates, end_coordinates, signal_height = 50, rising_slop=0, falling_slop=0, double_skew=True, logic_color="#000000", line_width=1):
+    x_cur, y_cur = start_coordinates
+    x_end, y_end = end_coordinates
+    # Open the image in edit mode
+    draw = ImageDraw.Draw(img)  
+    # Draw logic 1 pulse
+    if(logic_value == '1'):
+        # Draw the rising slop line
+        draw.line([(x_cur, y_cur), (x_cur + rising_slop, y_cur - signal_height)], width = line_width, fill = logic_color)
+        if(double_skew):
+            draw.line([(x_cur + rising_slop, y_cur), (x_cur + (2 * rising_slop), y_cur - signal_height)], width = line_width, fill = logic_color)
+        # Draw the 1 line
+        draw.line([(x_cur + rising_slop, y_cur - signal_height), (x_end - falling_slop, y_end - signal_height)], width = line_width, fill = logic_color)
+        # Draw the falling slop line
+        draw.line([(x_end - falling_slop, y_end - signal_height), (x_end, y_end)], width = line_width, fill = logic_color)
+        if(double_skew):
+            draw.line([(x_end - (2* falling_slop), y_end - signal_height), (x_end - falling_slop, y_end)], width = line_width, fill = logic_color)
+    elif(logic_value == '0'):
+        draw.line([(x_cur, y_cur), (x_end, y_end)], width = line_width, fill = logic_color)
 
+    elif(logic_value.lower() == 'x'):
+        # Draw parallel double line to represent 'x' logic value
+        # Draw the upper line
+        draw.line([(x_cur, y_cur - signal_height), (x_end, y_end - signal_height)], width = line_width, fill = logic_color)
+        # Draw the lower line
+        draw.line([(x_cur, y_cur), (x_end, y_end )], width = line_width, fill = logic_color)
+    elif(logic_value.lower() == 'z'):
+        # Draw mid line to represent the z value
+        draw.line([(x_cur, y_cur - (signal_height /2)), (x_end, y_end - (signal_height /2))], width = line_width, fill = logic_color)   
+    img.show()
     
 ################################################################################################
 # Function:     write_text
